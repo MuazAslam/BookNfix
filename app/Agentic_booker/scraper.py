@@ -197,11 +197,25 @@ def get_business_card_elements(driver) -> list:
         'div.uMdZh',
         'div.cXedhc',
     ]
+    # Wait for at least one card selector to become present (up to 8 seconds)
+    print("    [cards] Waiting for cards to render...")
+    start_time = time.time()
+    while time.time() - start_time < 8:
+        for sel in selectors:
+            try:
+                cards = driver.find_elements(By.CSS_SELECTOR, sel)
+                if len(cards) >= 2:
+                    print(f'    [cards] selector "{sel}" -> {len(cards)} cards')
+                    return cards
+            except Exception:
+                pass
+        time.sleep(0.5)
+    
+    # Try one last immediate check without wait
     for sel in selectors:
         try:
             cards = driver.find_elements(By.CSS_SELECTOR, sel)
-            if len(cards) >= 2:
-                print(f'    [cards] selector "{sel}" -> {len(cards)} cards')
+            if len(cards) >= 1:
                 return cards
         except Exception:
             pass
@@ -916,6 +930,16 @@ def scrape(service: str, location: str,
     businesses = []
 
     try:
+        # Pre-set Google consent cookies to completely bypass consent walls globally
+        try:
+            driver.get("https://www.google.com")
+            time.sleep(1.0)
+            driver.add_cookie({"name": "CONSENT", "value": "YES+cb.20220215-08-p0.en+FX+555", "domain": ".google.com"})
+            driver.add_cookie({"name": "SOCS", "value": "OTI2OTI5NTM5", "domain": ".google.com"})
+            print("    [scraper] Google consent cookies injected successfully.")
+        except Exception as ce:
+            print(f"    [scraper] Consent cookie injection skipped: {ce}")
+
         google_search(driver, query)
 
         cards = get_business_card_elements(driver)
