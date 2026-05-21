@@ -12,4 +12,5 @@ __pycache__/
 *.sqlite3
 data/
 *.txt
+!requirements.txt
 *.json
