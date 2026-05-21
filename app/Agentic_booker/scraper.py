@@ -108,6 +108,29 @@ def get_chrome_major_version() -> int:
     return None
 
 def make_driver(headless: bool = False) -> uc.Chrome:
+    # On Railway / Docker containers, directly use standard Selenium with evasion parameters
+    # to avoid undetected-chromedriver's localhost binding/debugging port errors.
+    if os.path.exists("/app/data") or os.environ.get("PORT") or os.environ.get("RAILWAY_STATIC_URL"):
+        print("[scraper] Container/Cloud environment detected. Directing to standard Selenium Chrome driver with evasion...")
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        co = Options()
+        co.add_argument('--headless=new')
+        co.add_argument('--no-sandbox')
+        co.add_argument('--disable-dev-shm-usage')
+        co.add_argument('--disable-gpu')
+        co.add_argument('--lang=en-US')
+        co.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36')
+        co.add_argument('--disable-blink-features=AutomationControlled')
+        co.add_experimental_option("excludeSwitches", ["enable-automation"])
+        co.add_experimental_option('useAutomationExtension', False)
+        driver = webdriver.Chrome(options=co)
+        # Hide navigator.webdriver completely
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        })
+        return driver
+
     opts = uc.ChromeOptions()
     opts.add_argument('--lang=en-US')
     opts.add_argument('--no-first-run')
@@ -117,7 +140,6 @@ def make_driver(headless: bool = False) -> uc.Chrome:
     opts.add_argument('--no-sandbox')
     opts.add_argument('--disable-dev-shm-usage')
     opts.add_argument('--disable-gpu')
-    # Opened visibly as requested so you can monitor progress.
     if headless:
         opts.add_argument('--headless=new')
     
