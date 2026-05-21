@@ -130,25 +130,43 @@ def make_driver(headless: bool = False) -> uc.Chrome:
         try:
             return uc.Chrome(options=opts, use_subprocess=False)
         except Exception as e2:
-            print(f"[scraper] uc.Chrome fallback failed: {e2}. Attempting simple selenium chrome driver...")
+            print(f"[scraper] uc.Chrome fallback failed: {e2}. Attempting simple selenium chrome driver with evasion...")
             from selenium import webdriver
             from selenium.webdriver.chrome.options import Options
             co = Options()
-            co.add_argument('--headless')
+            co.add_argument('--headless=new')
             co.add_argument('--no-sandbox')
             co.add_argument('--disable-dev-shm-usage')
             co.add_argument('--disable-gpu')
-            return webdriver.Chrome(options=co)
+            co.add_argument('--lang=en-US')
+            co.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36')
+            co.add_argument('--disable-blink-features=AutomationControlled')
+            co.add_experimental_option("excludeSwitches", ["enable-automation"])
+            co.add_experimental_option('useAutomationExtension', False)
+            driver = webdriver.Chrome(options=co)
+            # Evade navigator.webdriver detection
+            driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+            })
+            return driver
 
 
 def dismiss_consent(driver):
-    for label in ('Accept all', 'I agree', 'Accept'):
+    # Dynamic, language-independent and ID-based consent XPaths
+    xpaths = [
+        '//button[@id="L2AGLb"]', # Google's direct Accept All button ID in Europe
+        '//button[normalize-space()="Accept all"]',
+        '//button[normalize-space()="I agree"]',
+        '//button[normalize-space()="Accept"]',
+        '//button[contains(@aria-label,"Accept all")]',
+        '//form[@action="https://consent.google.com/save"]//button',
+    ]
+    for xpath in xpaths:
         try:
-            btn = driver.find_element(
-                By.XPATH, f'//button[normalize-space()="{label}"]'
-            )
+            btn = driver.find_element(By.XPATH, xpath)
             btn.click()
-            pause(0.8, 1.5)
+            pause(1.0, 2.0)
+            print(f"    [scraper] Consent dismissed using: {xpath}")
             return
         except Exception:
             pass
