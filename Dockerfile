@@ -8,7 +8,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     xvfb \
     libxi6 \
-    libgconf-2-4 \
     libnss3 \
     libxss1 \
     libasound2 \
