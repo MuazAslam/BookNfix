@@ -15,12 +15,15 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Google Chrome directly from deb package
-RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && apt-get update \
-    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
-    && rm google-chrome-stable_current_amd64.deb \
-    && rm -rf /var/lib/apt/lists/*
+# Install Google Chrome
+RUN wget -q -O /tmp/google-chrome.pub https://dl-ssl.google.com/linux/linux_signing_key.pub \
+ && mkdir -p /etc/apt/keyrings \
+ && gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg /tmp/google-chrome.pub \
+ && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+ && rm /tmp/google-chrome.pub \
+ && apt-get update \
+ && apt-get install -y google-chrome-stable \
+ && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
